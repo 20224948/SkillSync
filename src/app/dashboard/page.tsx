@@ -1,6 +1,24 @@
+'use client'
+
+import { useEffect } from 'react'
+import { getStudentData } from '../lib/api'
+
 // DashboardPage component
 // This is the main landing page after login, showing user learning analytics
 export default function DashboardPage() {
+  useEffect(() => {
+    async function loadStudentData() {
+      try {
+        const data = await getStudentData()
+        console.log('Dashboard API DATA:', data)
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error)
+      }
+    }
+
+    loadStudentData()
+  }, [])
+
   return (
     <div>
       {/* Page header section */}
@@ -11,7 +29,6 @@ export default function DashboardPage() {
 
       {/* Top grid section containing key summary cards */}
       <div className="dashboard-grid-top">
-
         {/* Overall Mastery Card */}
         <div className="soft-card">
           <h3 className="metric-title">Overall Mastery</h3>

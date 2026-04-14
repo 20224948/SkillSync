@@ -1,4 +1,22 @@
+'use client'
+
+import { useEffect } from 'react'
+import { getStudentData } from '../lib/api'
+
 export default function StudyPlanPage() {
+  useEffect(() => {
+    async function loadStudentData() {
+      try {
+        const data = await getStudentData()
+        console.log('Study Plan API DATA:', data)
+      } catch (error) {
+        console.error('Failed to load study plan data:', error)
+      }
+    }
+
+    loadStudentData()
+  }, [])
+
   return (
     <div>
       <div className="page-heading">
