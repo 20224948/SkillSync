@@ -1,32 +1,56 @@
 'use client'
 
-import { useEffect } from 'react'
-import { getStudentData } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { getStudyPlanData } from '../lib/api'
 
 export default function StudyPlanPage() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [data, setData] = useState<any>(null)
+
   useEffect(() => {
-    async function loadStudentData() {
+    async function loadStudyPlan() {
       try {
-        const data = await getStudentData()
-        console.log('Study Plan API DATA:', data)
-      } catch (error) {
-        console.error('Failed to load study plan data:', error)
+        const result = await getStudyPlanData()
+        setData(result)
+      } catch (error: any) {
+        setError(error?.message || 'Failed to load study plan')
+      } finally {
+        setLoading(false)
       }
     }
 
-    loadStudentData()
+    loadStudyPlan()
   }, [])
+
+  if (loading) return <p>Loading study plan...</p>
+  if (error) return <p>Error: {error}</p>
+
+  const firstName = data?.student?.display_name?.split(' ')[0] || 'Student'
+  const recommendations = data?.recommendations ?? []
 
   return (
     <div>
       <div className="page-heading">
-        <h1>Study Plan</h1>
-        <p>A personalised study plan will appear here once learning data is available.</p>
+        <h1>{firstName}&apos;s Study Plan</h1>
+        <p>Your personalised study plan based on identified skill gaps</p>
       </div>
 
-      <div className="empty-state">
-        <p>No study plan generated yet</p>
-      </div>
+      {recommendations.length === 0 ? (
+        <div className="empty-state">
+          <p>No study plan actions available yet.</p>
+        </div>
+      ) : (
+        <div className="study-plan-grid">
+          {recommendations.map((item: any, index: number) => (
+            <div className="study-plan-card" key={item.id}>
+              <h3>{item.title || `Study Focus ${index + 1}`}</h3>
+
+              <p>{item.action}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

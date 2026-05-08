@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '../app/lib/supabaseClient'
+
 import {
   DashboardSidebarIcon,
   StudyPlanSidebarIcon,
@@ -35,6 +37,14 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+
+    router.push('/')
+    router.refresh()
+  }
 
   return (
     <aside className="sidebar">
@@ -60,6 +70,7 @@ export default function Sidebar() {
               <span className="sidebar-icon-wrap">
                 <Icon size={52} />
               </span>
+
               <span>{item.label}</span>
             </Link>
           )
@@ -68,12 +79,17 @@ export default function Sidebar() {
 
       <div className="sidebar-spacer" />
 
-      <Link href="/" className="sidebar-logout">
-  <span className="sidebar-icon-wrap">
-    <SignOutSidebarIcon size={40} />
-  </span>
-  <span className="sidebar-logout-text">Logout</span>
-</Link>
+      <button
+        type="button"
+        className="sidebar-logout"
+        onClick={handleLogout}
+      >
+        <span className="sidebar-icon-wrap">
+          <SignOutSidebarIcon size={40} />
+        </span>
+
+        <span className="sidebar-logout-text">Logout</span>
+      </button>
     </aside>
   )
 }
