@@ -14,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* AppShell controls the shared layout shown after login */}
         <AppShell>{children}</AppShell>
       </body>
     </html>

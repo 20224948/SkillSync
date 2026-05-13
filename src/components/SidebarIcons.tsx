@@ -1,3 +1,12 @@
+/*
+|--------------------------------------------------------------------------
+| Sidebar Icon Components
+|--------------------------------------------------------------------------
+| Reusable SVG icons used throughout the SkillSync sidebar.
+| Each icon supports a configurable size prop for flexibility.
+|--------------------------------------------------------------------------
+*/
+
 type IconProps = {
   size?: number
 }

@@ -1,5 +1,14 @@
 import { supabase } from './supabaseClient'
 
+/*
+|--------------------------------------------------------------------------
+| Student Report Data
+|--------------------------------------------------------------------------
+| Gets the currently logged-in student and their latest learning report
+| for the selected Moodle course.
+|--------------------------------------------------------------------------
+*/
+
 export async function getStudentData(courseId = '2') {
   const {
     data: { session },
@@ -11,6 +20,14 @@ export async function getStudentData(courseId = '2') {
   }
 
   const authUserId = session.user.id
+
+  /*
+  |--------------------------------------------------------------------------
+  | Logged-In Student
+  |--------------------------------------------------------------------------
+  | Links the Supabase authenticated user to the matching student row.
+  |--------------------------------------------------------------------------
+  */
 
   const { data: student, error: studentError } = await supabase
     .from('students')
@@ -25,6 +42,15 @@ export async function getStudentData(courseId = '2') {
       `No student row linked to logged-in user (${session.user.email})`
     )
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Latest Learning Reports
+  |--------------------------------------------------------------------------
+  | Retrieves the latest report and, where available, the previous report.
+  | The previous report is used only to calculate mastery score changes.
+  |--------------------------------------------------------------------------
+  */
 
   const { data: reports, error: reportsError } = await supabase
     .from('learning_reports')
@@ -52,6 +78,15 @@ export async function getStudentData(courseId = '2') {
   const latestReport = reports[0]
   const previousReport = reports[1] ?? null
 
+  /*
+  |--------------------------------------------------------------------------
+  | Latest Mastery Rows
+  |--------------------------------------------------------------------------
+  | Reads the calculated competency/SILO mastery scores from Supabase.
+  | These values are calculated by the backend, not by the frontend.
+  |--------------------------------------------------------------------------
+  */
+
   const { data: latestMasteryRows, error: latestMasteryError } = await supabase
     .from('competency_mastery')
     .select(`
@@ -67,6 +102,15 @@ export async function getStudentData(courseId = '2') {
     .order('competency_id', { ascending: true })
 
   if (latestMasteryError) throw new Error(latestMasteryError.message)
+
+  /*
+  |--------------------------------------------------------------------------
+  | Previous Mastery Rows
+  |--------------------------------------------------------------------------
+  | If an older report exists, its scores are loaded so the dashboard
+  | can show whether each mastery area has improved or declined.
+  |--------------------------------------------------------------------------
+  */
 
   let previousMasteryRows: any[] = []
 
@@ -84,6 +128,15 @@ export async function getStudentData(courseId = '2') {
 
     previousMasteryRows = data ?? []
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Mastery Trend Mapping
+  |--------------------------------------------------------------------------
+  | Adds previous score and score-change values to the latest mastery rows.
+  | This supports frontend trend indicators without recalculating mastery.
+  |--------------------------------------------------------------------------
+  */
 
   const masteryRowsWithTrend =
     latestMasteryRows?.map((current) => {
@@ -118,6 +171,14 @@ export async function getStudentData(courseId = '2') {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Study Plan Data
+|--------------------------------------------------------------------------
+| Reads AI-generated study recommendations for the latest report.
+|--------------------------------------------------------------------------
+*/
+
 export async function getStudyPlanData(courseId = '2') {
   const studentData = await getStudentData(courseId)
 
@@ -141,6 +202,14 @@ export async function getStudyPlanData(courseId = '2') {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| Study Tips Data
+|--------------------------------------------------------------------------
+| Reads AI-generated study tips connected to the latest report.
+|--------------------------------------------------------------------------
+*/
+
 export async function getStudyTipsData(courseId = '2') {
   const studentData = await getStudentData(courseId)
 
@@ -162,6 +231,14 @@ export async function getStudyTipsData(courseId = '2') {
     tips: tips ?? [],
   }
 }
+
+/*
+|--------------------------------------------------------------------------
+| Adaptive Quiz Data
+|--------------------------------------------------------------------------
+| Reads generated quiz questions connected to the latest report.
+|--------------------------------------------------------------------------
+*/
 
 export async function getAdaptiveQuizData(courseId = '2') {
   const studentData = await getStudentData(courseId)

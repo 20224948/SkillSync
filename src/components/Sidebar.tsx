@@ -2,15 +2,25 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+
 import { supabase } from '../app/lib/supabaseClient'
 
 import {
-  DashboardSidebarIcon,
-  StudyPlanSidebarIcon,
   AdaptiveQuizSidebarIcon,
-  StudyTipsSidebarIcon,
+  DashboardSidebarIcon,
   SignOutSidebarIcon,
+  StudyPlanSidebarIcon,
+  StudyTipsSidebarIcon,
 } from './SidebarIcons'
+
+/*
+|--------------------------------------------------------------------------
+| Sidebar Navigation Configuration
+|--------------------------------------------------------------------------
+| Centralised navigation items used to render sidebar links.
+| Makes it easier to maintain routes, labels, and icons in one place.
+|--------------------------------------------------------------------------
+*/
 
 const navItems = [
   {
@@ -39,6 +49,15 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
+  /*
+  |--------------------------------------------------------------------------
+  | Logout Handler
+  |--------------------------------------------------------------------------
+  | Signs the user out through Supabase authentication,
+  | then redirects them back to the landing/login page.
+  |--------------------------------------------------------------------------
+  */
+
   async function handleLogout() {
     await supabase.auth.signOut()
 
@@ -48,6 +67,7 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
+      {/* SkillSync logo section */}
       <div className="sidebar-logo">
         <img
           src="/skillsync-logo.png"
@@ -56,6 +76,7 @@ export default function Sidebar() {
         />
       </div>
 
+      {/* Main navigation links */}
       <nav className="sidebar-nav">
         {navItems.map((item) => {
           const isActive = pathname === item.href
@@ -77,8 +98,10 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* Pushes logout button to bottom of sidebar */}
       <div className="sidebar-spacer" />
 
+      {/* Logout action */}
       <button
         type="button"
         className="sidebar-logout"

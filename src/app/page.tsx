@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from './lib/supabaseClient'
 import { useRouter } from 'next/navigation'
+
+import { supabase } from './lib/supabaseClient'
 
 export default function LoginPage() {
   const router = useRouter()
 
+  // Form state used for Supabase authentication.
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  // UI feedback state for login errors and loading status.
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -29,11 +33,13 @@ export default function LoginPage() {
       return
     }
 
+    // Successful login redirects the student to the dashboard.
     router.push('/dashboard')
   }
 
   return (
     <div className="login-page">
+      {/* Decorative background glow for the login screen */}
       <div className="login-background-glow" />
 
       <div className="login-card">

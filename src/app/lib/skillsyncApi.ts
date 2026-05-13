@@ -1,3 +1,12 @@
+/*
+|--------------------------------------------------------------------------
+| SkillSync Backend API Configuration
+|--------------------------------------------------------------------------
+| This file contains helper functions for calling the hosted SkillSync API.
+| Authenticated requests must include the Supabase access token.
+|--------------------------------------------------------------------------
+*/
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_SKILLSYNC_API_BASE_URL
 
 if (!API_BASE_URL) {
