@@ -159,6 +159,23 @@ src/
 
 ---
 
+# Authentication and Backend Integration
+
+SkillSync uses Supabase Authentication for user login and session management.
+
+The frontend communicates with the hosted SkillSync backend API using bearer-token authentication.
+
+The frontend is responsible for:
+
+- Handling user authentication
+- Managing authenticated sessions
+- Rendering student learning analytics
+- Displaying AI-generated study support
+- Handling frontend routing and navigation
+- Managing inactivity-based session termination
+
+---
+
 # Installation
 
 Clone the repository:
@@ -191,33 +208,5 @@ The application will run on:
 http://localhost:3000
 ```
 
----
 
-# Authentication and Backend Integration
 
-SkillSync uses Supabase Authentication for user login and session management.
-
-The frontend communicates with the hosted SkillSync backend API using bearer-token authentication.
-
-The frontend is responsible for:
-
-- Handling user authentication
-- Managing authenticated sessions
-- Rendering student learning analytics
-- Displaying AI-generated study support
-- Handling frontend routing and navigation
-- Managing inactivity-based session termination
-
----
-
-# Deployment
-
-The frontend application is designed to be deployed as a cloud-hosted web application.
-
-Current deployment considerations include:
-
-- Azure frontend hosting
-- Supabase authentication services
-- Hosted backend API integration
-- Moodle integration support
-- Responsive browser compatibility
