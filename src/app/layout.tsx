@@ -1,5 +1,6 @@
 import './globals.css'
 import AppShell from '../components/AppShell'
+import SessionTimeout from '../components/SessionTimeout'
 
 export const metadata = {
   title: 'SkillSync',
@@ -14,6 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* Automatically signs out inactive users */}
+        <SessionTimeout />
+
         {/* AppShell controls the shared layout shown after login */}
         <AppShell>{children}</AppShell>
       </body>
