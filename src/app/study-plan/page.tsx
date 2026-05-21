@@ -1,37 +1,35 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
 import { getStudyPlanData } from '../lib/api'
 
-export default function StudyPlanPage() {
-  /*
-  |--------------------------------------------------------------------------
-  | Component State
-  |--------------------------------------------------------------------------
-  */
+interface StudyPlanItem {
+  learning_report_id: string
+  title: string
+  related_area: string
+  reason: string
+  action: string
+  course_name: string
+}
 
+export default function StudyPlanPage() {
+  const [recommendations, setRecommendations] = useState<StudyPlanItem[]>([])
+  const [studentName, setStudentName] = useState('Student')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [data, setData] = useState<any>(null)
-
-  /*
-  |--------------------------------------------------------------------------
-  | Load Study Plan Data
-  |--------------------------------------------------------------------------
-  | Retrieves AI-generated study plan recommendations for the
-  | logged-in student's latest learning report.
-  |--------------------------------------------------------------------------
-  */
 
   useEffect(() => {
     async function loadStudyPlan() {
       try {
-        const result = await getStudyPlanData()
+        setLoading(true)
 
-        setData(result)
-      } catch (error: any) {
-        setError(error?.message || 'Failed to load study plan')
+        const data = await getStudyPlanData()
+
+        setRecommendations(data.recommendations ?? [])
+        setStudentName(data.student?.display_name ?? 'Student')
+      } catch (err: any) {
+        console.error(err)
+        setError(err.message || 'Failed to load study plan')
       } finally {
         setLoading(false)
       }
@@ -40,42 +38,55 @@ export default function StudyPlanPage() {
     loadStudyPlan()
   }, [])
 
-  /*
-  |--------------------------------------------------------------------------
-  | Loading / Error States
-  |--------------------------------------------------------------------------
-  */
+  if (loading) {
+    return (
+      <div className="page-heading">
+        <h1>Study Plan</h1>
+        <p>Loading personalised study plan...</p>
+      </div>
+    )
+  }
 
-  if (loading) return <p>Loading study plan...</p>
-
-  if (error) return <p>Error: {error}</p>
-
-  const firstName =
-    data?.student?.display_name?.split(' ')[0] || 'Student'
-
-  const recommendations = data?.recommendations ?? []
+  if (error) {
+    return (
+      <div className="page-heading">
+        <h1>Study Plan</h1>
+        <p>{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div>
-      {/* Page header */}
       <div className="page-heading">
-        <h1>{firstName}&apos;s Study Plan</h1>
-
-        <p>
-          Your personalised study plan based on identified skill gaps
-        </p>
+        <h1>{studentName}&apos;s Study Plan</h1>
+        <p>Your personalised study plan based on identified skill gaps</p>
       </div>
 
-      {/* Empty state */}
       {recommendations.length === 0 ? (
         <div className="empty-state">
-          <p>No study plan actions available yet.</p>
+          <p>No study plan recommendations available yet.</p>
         </div>
       ) : (
         <div className="study-plan-grid">
-          {recommendations.map((item: any, index: number) => (
-            <div className="study-plan-card" key={item.id}>
+          {recommendations.map((item, index) => (
+            <div
+              className="study-plan-card"
+              key={`${item.learning_report_id}-${index}`}
+            >
               <h3>{item.title || `Study Focus ${index + 1}`}</h3>
+
+              {item.course_name && (
+                <p className="study-tip-course">
+                  {item.course_name}
+                </p>
+              )}
+
+              {item.related_area && (
+                <p className="study-tip-subtitle">
+                  {item.related_area}
+                </p>
+              )}
 
               <p>{item.action}</p>
             </div>

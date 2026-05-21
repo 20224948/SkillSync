@@ -1,269 +1,220 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
 import { getAdaptiveQuizData } from '../lib/api'
 
-/*
-|--------------------------------------------------------------------------
-| Utility: Shuffle Array
-|--------------------------------------------------------------------------
-| Randomises array order for quiz question and answer variation.
-|--------------------------------------------------------------------------
-*/
+interface QuizQuestion {
+  id: string
+  learning_report_id: string
+  course_name: string
+  weak_area: string
+  question_number: number
+  question_text: string
+  choice_1: string
+  choice_2: string
+  choice_3: string
+  correct_answer: string
+  explanation: string
+  shuffled_choices?: string[]
+}
 
 function shuffleArray<T>(array: T[]) {
   return [...array].sort(() => Math.random() - 0.5)
 }
 
 export default function AdaptiveQuizPage() {
-  /*
-  |--------------------------------------------------------------------------
-  | Component State
-  |--------------------------------------------------------------------------
-  */
-
-  const [student, setStudent] = useState<any>(null)
-  const [questions, setQuestions] = useState<any[]>([])
-
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-
-  const [score, setScore] = useState<number | null>(null)
+  const [questions, setQuestions] = useState<QuizQuestion[]>([])
+  const [studentName, setStudentName] = useState('Student')
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>(
+    {}
+  )
   const [submitted, setSubmitted] = useState(false)
-
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  /*
-  |--------------------------------------------------------------------------
-  | Load Adaptive Quiz Data
-  |--------------------------------------------------------------------------
-  | Retrieves generated quiz questions from Supabase and randomises
-  | both question order and answer choice order.
-  |--------------------------------------------------------------------------
-  */
-
   useEffect(() => {
-    async function loadQuiz() {
+    async function loadQuizData() {
       try {
+        setLoading(true)
+
         const data = await getAdaptiveQuizData()
 
-        const shuffledQuestions = shuffleArray(data.questions).map(
-          (question: any) => {
-            const shuffledChoices = shuffleArray(
-              [
-                question.choice_1,
-                question.choice_2,
-                question.choice_3,
-                question.correct_answer,
-              ]
-                .filter(Boolean)
-                .filter(
-                  (value, index, self) => self.indexOf(value) === index
-                )
-            )
+        const shuffledQuestions = shuffleArray(
+          data.questions ?? []
+        ).map((question: QuizQuestion) => ({
+          ...question,
+          shuffled_choices: shuffleArray([
+            question.choice_1,
+            question.choice_2,
+            question.choice_3,
+          ]),
+        }))
 
-            return {
-              ...question,
-              shuffledChoices,
-            }
-          }
-        )
-
-        setStudent(data.student)
         setQuestions(shuffledQuestions)
-      } catch (error: any) {
-        setError(error?.message || 'Failed to load adaptive quiz')
+        setStudentName(data.student?.display_name ?? 'Student')
+      } catch (err: any) {
+        console.error(err)
+        setError(err.message || 'Failed to load adaptive quiz')
       } finally {
         setLoading(false)
       }
     }
 
-    loadQuiz()
+    loadQuizData()
   }, [])
 
-  /*
-  |--------------------------------------------------------------------------
-  | Quiz Interaction Handlers
-  |--------------------------------------------------------------------------
-  */
-
-  function handleSelect(questionId: string, answer: string) {
+  function handleAnswer(questionId: string, answer: string) {
     if (submitted) return
 
-    setAnswers((prev) => ({
-      ...prev,
+    setSelectedAnswers((current) => ({
+      ...current,
       [questionId]: answer,
     }))
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Quiz Submission
-  |--------------------------------------------------------------------------
-  | Compares student answers against backend-generated correct answers.
-  |--------------------------------------------------------------------------
-  */
-
-  function handleSubmit() {
-    let correctCount = 0
-
-    questions.forEach((question) => {
-      if (answers[question.id] === question.correct_answer) {
-        correctCount += 1
-      }
-    })
-
-    setScore(correctCount)
-    setSubmitted(true)
+  function getScore() {
+    return questions.filter(
+      (question) => selectedAnswers[question.id] === question.correct_answer
+    ).length
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Retry Quiz
-  |--------------------------------------------------------------------------
-  | Resets answers and reshuffles question order for another attempt.
-  |--------------------------------------------------------------------------
-  */
-
-  function handleRetry() {
-    const reshuffledQuestions = shuffleArray(questions).map((question: any) => {
-      const reshuffledChoices = shuffleArray(question.shuffledChoices)
-
-      return {
-        ...question,
-        shuffledChoices: reshuffledChoices,
-      }
-    })
+  function retryQuiz() {
+    const reshuffledQuestions = shuffleArray(questions).map((question) => ({
+      ...question,
+      shuffled_choices: shuffleArray([
+        question.choice_1,
+        question.choice_2,
+        question.choice_3,
+      ]),
+    }))
 
     setQuestions(reshuffledQuestions)
-
-    setAnswers({})
-    setScore(null)
+    setSelectedAnswers({})
     setSubmitted(false)
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Loading / Error States
-  |--------------------------------------------------------------------------
-  */
+  if (loading) {
+    return (
+      <div className="page-heading">
+        <h1>Adaptive Quiz</h1>
+        <p>Loading quiz questions...</p>
+      </div>
+    )
+  }
 
-  if (loading) return <p>Loading adaptive quiz...</p>
-
-  if (error) return <p>Error: {error}</p>
-
-  const firstName = student?.display_name?.split(' ')[0] || 'Student'
-
-  const allAnswered = questions.every(
-    (question) => answers[question.id]
-  )
+  if (error) {
+    return (
+      <div className="page-heading">
+        <h1>Adaptive Quiz</h1>
+        <p>{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div>
-      {/* Page header */}
       <div className="page-heading">
-        <h1>{firstName}&apos;s Adaptive Quiz</h1>
-
+        <h1>{studentName}&apos;s Adaptive Quiz</h1>
         <p>Questions tailored to your current weak areas.</p>
       </div>
 
-      {/* Empty state */}
       {questions.length === 0 ? (
         <div className="empty-state">
           <p>No adaptive quiz questions available yet.</p>
         </div>
       ) : (
         <>
-          {/* Quiz question list */}
           <div className="adaptive-quiz-list">
-            {questions.map((question, index) => (
-              <div className="adaptive-quiz-card" key={question.id}>
-                <span className="quiz-area">
-                  {question.weak_area}
-                </span>
+            {questions.map((question, index) => {
+              const choices = question.shuffled_choices ?? [
+                question.choice_1,
+                question.choice_2,
+                question.choice_3,
+              ]
 
-                <h3>
-                  Question {index + 1}: {question.question_text}
-                </h3>
+              return (
+                <div
+                  className="adaptive-quiz-card"
+                  key={`${question.learning_report_id}-${question.id}-${index}`}
+                >
+                  {question.course_name && (
+                    <p className="quiz-course">
+                      {question.course_name}
+                    </p>
+                  )}
 
-                {/* Multiple choice options */}
-                <div className="quiz-options">
-                  {question.shuffledChoices.map(
-                    (choice: string, choiceIndex: number) => {
-                      const selected =
-                        answers[question.id] === choice
+                  {question.weak_area && (
+                    <p className="quiz-area">
+                      {question.weak_area}
+                    </p>
+                  )}
+
+                  <h3>
+                    Question {index + 1}: {question.question_text}
+                  </h3>
+
+                  <div className="quiz-options">
+                    {choices.map((choice, choiceIndex) => {
+                      const isSelected =
+                        selectedAnswers[question.id] === choice
 
                       const isCorrect =
-                        question.correct_answer === choice
+                        submitted && choice === question.correct_answer
 
-                      const optionLabel = String.fromCharCode(
-                        65 + choiceIndex
-                      )
-
-                      let className = 'quiz-option'
-
-                      if (selected) className += ' selected'
-
-                      if (submitted && isCorrect) {
-                        className += ' correct'
-                      }
-
-                      if (
+                      const isIncorrect =
                         submitted &&
-                        selected &&
-                        !isCorrect
-                      ) {
-                        className += ' incorrect'
-                      }
+                        isSelected &&
+                        choice !== question.correct_answer
 
                       return (
                         <button
+                          key={`${question.id}-${choiceIndex}`}
                           type="button"
-                          key={choice}
-                          className={className}
-                          onClick={() =>
-                            handleSelect(question.id, choice)
-                          }
+                          className={[
+                            'quiz-option',
+                            isSelected ? 'selected' : '',
+                            isCorrect ? 'correct' : '',
+                            isIncorrect ? 'incorrect' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          onClick={() => handleAnswer(question.id, choice)}
                         >
-                          {optionLabel}. {choice}
+                          {String.fromCharCode(65 + choiceIndex)}. {choice}
                         </button>
                       )
-                    }
+                    })}
+                  </div>
+
+                  {submitted && question.explanation && (
+                    <p className="quiz-explanation">
+                      {question.explanation}
+                    </p>
                   )}
                 </div>
-
-                {/* AI explanation shown after submission */}
-                {submitted && question.explanation && (
-                  <p className="quiz-explanation">
-                    {question.explanation}
-                  </p>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* Quiz actions / results */}
           <div className="quiz-submit-row">
             {!submitted ? (
               <button
                 type="button"
                 className="quiz-submit-button"
-                disabled={!allAnswered}
-                onClick={handleSubmit}
+                onClick={() => setSubmitted(true)}
               >
-                Submit Answers
+                Submit Quiz
               </button>
             ) : (
               <div className="quiz-result-wrap">
-                <div className="quiz-result">
-                  Score: {score}/{questions.length}
-                </div>
+                <p className="quiz-result">
+                  Score: {getScore()} / {questions.length}
+                </p>
 
                 <button
                   type="button"
                   className="quiz-retry-button"
-                  onClick={handleRetry}
+                  onClick={retryQuiz}
                 >
                   Retry Quiz
                 </button>

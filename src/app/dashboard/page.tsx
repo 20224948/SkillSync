@@ -19,9 +19,6 @@ export default function DashboardPage() {
   |--------------------------------------------------------------------------
   | Load Dashboard Data
   |--------------------------------------------------------------------------
-  | Retrieves the latest learning report, mastery scores,
-  | and competency trend information for the logged-in student.
-  |--------------------------------------------------------------------------
   */
 
   useEffect(() => {
@@ -75,9 +72,6 @@ export default function DashboardPage() {
   /*
   |--------------------------------------------------------------------------
   | SILO / Competency Data
-  |--------------------------------------------------------------------------
-  | Uses normalized mastery rows when available, otherwise falls
-  | back to report JSON data.
   |--------------------------------------------------------------------------
   */
 
@@ -148,7 +142,12 @@ export default function DashboardPage() {
             ) : (
               strengths.map((item: any, index: number) => (
                 <div className="dashboard-list-row" key={index}>
-                  <span>{cleanTitle(item.title)}</span>
+                  <span>
+                    <strong>{item.course_name}</strong>{' '}
+                    <em>
+                      - {cleanTitle(item.title)}
+                    </em>
+                  </span>
 
                   <div className="dashboard-progress">
                     <div
@@ -166,7 +165,9 @@ export default function DashboardPage() {
 
         {/* Weak areas card */}
         <div className="soft-card dashboard-card">
-          <h3 className="metric-title">Needs Improvement</h3>
+          <h3 className="metric-title">
+            Needs Improvement
+          </h3>
 
           <div className="dashboard-list">
             {weakAreas.length === 0 ? (
@@ -174,7 +175,12 @@ export default function DashboardPage() {
             ) : (
               weakAreas.map((item: any, index: number) => (
                 <div className="dashboard-list-row" key={index}>
-                  <span>{cleanTitle(item.title)}</span>
+                  <span>
+                    <strong>{item.course_name}</strong>{' '}
+                    <em>
+                      - {cleanTitle(item.title)}
+                    </em>
+                  </span>
 
                   <div className="dashboard-progress">
                     <div
@@ -207,8 +213,12 @@ export default function DashboardPage() {
                 key={index}
               >
                 <span className="learning-overview-title">
-                  {silo.competency_id} -{' '}
-                  {cleanTitle(silo.title)}
+                  <strong>
+                    {silo.course_name}
+                  </strong>{' '}
+                  <em>
+                    - {cleanTitle(silo.title)}
+                  </em>
                 </span>
 
                 <div className="dashboard-progress">
@@ -222,7 +232,8 @@ export default function DashboardPage() {
 
                 <span className="learning-overview-score">
                   {silo.previous_mastery_score !== null &&
-                  silo.previous_mastery_score !== undefined ? (
+                  silo.previous_mastery_score !==
+                    undefined ? (
                     <span
                       className={
                         Number(silo.mastery_change) >= 0
@@ -234,16 +245,25 @@ export default function DashboardPage() {
                         silo.previous_mastery_score
                       ).toFixed(0)}
                       % →{' '}
-                      {Number(silo.mastery_score).toFixed(0)}% (
-                      {Number(silo.mastery_change) >= 0
+                      {Number(
+                        silo.mastery_score
+                      ).toFixed(0)}
+                      % (
+                      {Number(silo.mastery_change) >=
+                      0
                         ? '+'
                         : ''}
-                      {Number(silo.mastery_change).toFixed(0)}
+                      {Number(
+                        silo.mastery_change
+                      ).toFixed(0)}
                       %)
                     </span>
                   ) : (
                     <span>
-                      {Number(silo.mastery_score).toFixed(0)}%
+                      {Number(
+                        silo.mastery_score
+                      ).toFixed(0)}
+                      %
                     </span>
                   )}
                 </span>
@@ -259,8 +279,6 @@ export default function DashboardPage() {
 /*
 |--------------------------------------------------------------------------
 | Utility: Clean SILO Title
-|--------------------------------------------------------------------------
-| Removes redundant SILO prefixes to improve UI readability.
 |--------------------------------------------------------------------------
 */
 

@@ -1,15 +1,6 @@
 import { supabase } from './supabaseClient'
 
-/*
-|--------------------------------------------------------------------------
-| Student Report Data
-|--------------------------------------------------------------------------
-| Gets the currently logged-in student and their latest learning report
-| for the selected Moodle course.
-|--------------------------------------------------------------------------
-*/
-
-export async function getStudentData(courseId = '2') {
+export async function getStudentData() {
   const {
     data: { session },
     error: sessionError,
@@ -21,17 +12,14 @@ export async function getStudentData(courseId = '2') {
 
   const authUserId = session.user.id
 
-  /*
-  |--------------------------------------------------------------------------
-  | Logged-In Student
-  |--------------------------------------------------------------------------
-  | Links the Supabase authenticated user to the matching student row.
-  |--------------------------------------------------------------------------
-  */
-
   const { data: student, error: studentError } = await supabase
     .from('students')
-    .select('id, display_name, moodle_user_id, auth_user_id')
+    .select(`
+      id,
+      display_name,
+      moodle_user_id,
+      auth_user_id
+    `)
     .eq('auth_user_id', authUserId)
     .maybeSingle()
 
@@ -42,15 +30,6 @@ export async function getStudentData(courseId = '2') {
       `No student row linked to logged-in user (${session.user.email})`
     )
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Latest Learning Reports
-  |--------------------------------------------------------------------------
-  | Retrieves the latest report and, where available, the previous report.
-  | The previous report is used only to calculate mastery score changes.
-  |--------------------------------------------------------------------------
-  */
 
   const { data: reports, error: reportsError } = await supabase
     .from('learning_reports')
@@ -65,31 +44,27 @@ export async function getStudentData(courseId = '2') {
       full_report
     `)
     .eq('student_id', student.id)
-    .eq('course_moodle_id', courseId)
     .order('generated_at', { ascending: false })
-    .limit(2)
 
   if (reportsError) throw new Error(reportsError.message)
 
   if (!reports || reports.length === 0) {
-    throw new Error(`No learning report found for ${student.display_name}`)
+    return {
+      status: 'empty',
+      student,
+      reports: [],
+      masteryRows: [],
+      overall_mastery_score: null,
+      generated_at: null,
+    }
   }
 
-  const latestReport = reports[0]
-  const previousReport = reports[1] ?? null
+  const learningReportIds = reports.map((report) => report.id)
 
-  /*
-  |--------------------------------------------------------------------------
-  | Latest Mastery Rows
-  |--------------------------------------------------------------------------
-  | Reads the calculated competency/SILO mastery scores from Supabase.
-  | These values are calculated by the backend, not by the frontend.
-  |--------------------------------------------------------------------------
-  */
-
-  const { data: latestMasteryRows, error: latestMasteryError } = await supabase
+  const { data: masteryRows, error: masteryError } = await supabase
     .from('competency_mastery')
     .select(`
+      learning_report_id,
       competency_id,
       title,
       description,
@@ -98,150 +73,193 @@ export async function getStudentData(courseId = '2') {
       evidence_count,
       total_evidence_weight
     `)
-    .eq('learning_report_id', latestReport.id)
-    .order('competency_id', { ascending: true })
+    .in('learning_report_id', learningReportIds)
 
-  if (latestMasteryError) throw new Error(latestMasteryError.message)
+  if (masteryError) throw new Error(masteryError.message)
 
-  /*
-  |--------------------------------------------------------------------------
-  | Previous Mastery Rows
-  |--------------------------------------------------------------------------
-  | If an older report exists, its scores are loaded so the dashboard
-  | can show whether each mastery area has improved or declined.
-  |--------------------------------------------------------------------------
-  */
+  const reportMap = new Map(
+    reports.map((report) => [
+      report.id,
+      {
+        course_name: report.course_name,
+        course_moodle_id: report.course_moodle_id,
+      },
+    ])
+  )
 
-  let previousMasteryRows: any[] = []
+  const groupedMastery = new Map()
 
-  if (previousReport) {
-    const { data, error } = await supabase
-      .from('competency_mastery')
-      .select(`
-        competency_id,
-        title,
-        mastery_score
-      `)
-      .eq('learning_report_id', previousReport.id)
+  for (const row of masteryRows ?? []) {
+    const reportInfo = reportMap.get(row.learning_report_id)
 
-    if (error) throw new Error(error.message)
+    const groupKey = `${row.learning_report_id}-${row.competency_id}`
 
-    previousMasteryRows = data ?? []
+    const existing = groupedMastery.get(groupKey)
+
+    if (!existing) {
+      groupedMastery.set(groupKey, {
+        learning_report_id: row.learning_report_id,
+        competency_id: row.competency_id,
+        course_name:
+          reportInfo?.course_name ?? 'Unknown Course',
+        course_moodle_id:
+          reportInfo?.course_moodle_id ?? null,
+        title: row.title,
+        description: row.description,
+        confidence: row.confidence,
+        mastery_score: Number(row.mastery_score),
+        evidence_count: Number(row.evidence_count ?? 0),
+        total_evidence_weight: Number(
+          row.total_evidence_weight ?? 0
+        ),
+        report_count: 1,
+      })
+
+      continue
+    }
+
+    existing.mastery_score += Number(row.mastery_score)
+    existing.evidence_count += Number(row.evidence_count ?? 0)
+    existing.total_evidence_weight += Number(
+      row.total_evidence_weight ?? 0
+    )
+    existing.report_count += 1
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Mastery Trend Mapping
-  |--------------------------------------------------------------------------
-  | Adds previous score and score-change values to the latest mastery rows.
-  | This supports frontend trend indicators without recalculating mastery.
-  |--------------------------------------------------------------------------
-  */
+  const aggregatedMasteryRows = Array.from(
+    groupedMastery.values()
+  ).map((row: any) => ({
+    ...row,
+    mastery_score: row.mastery_score / row.report_count,
+  }))
 
-  const masteryRowsWithTrend =
-    latestMasteryRows?.map((current) => {
-      const previous = previousMasteryRows.find(
-        (item) => item.competency_id === current.competency_id
-      )
-
-      const previousScore =
-        previous?.mastery_score !== undefined
-          ? Number(previous.mastery_score)
-          : null
-
-      const currentScore = Number(current.mastery_score)
-
-      return {
-        ...current,
-        previous_mastery_score: previousScore,
-        mastery_change:
-          previousScore === null ? null : currentScore - previousScore,
-      }
-    }) ?? []
+  const overall_mastery_score =
+    reports.reduce(
+      (sum, report) =>
+        sum + Number(report.overall_mastery_score ?? 0),
+      0
+    ) / reports.length
 
   return {
     status: 'ready',
     student,
-    masteryRows: masteryRowsWithTrend,
-    previous_report_id: previousReport?.id ?? null,
-    learning_report_id: latestReport.id,
-    overall_mastery_score: latestReport.overall_mastery_score,
-    generated_at: latestReport.generated_at,
-    report: latestReport.full_report,
+    reports,
+    masteryRows: aggregatedMasteryRows,
+    overall_mastery_score,
+    generated_at: reports[0]?.generated_at ?? null,
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Study Plan Data
-|--------------------------------------------------------------------------
-| Reads AI-generated study recommendations for the latest report.
-|--------------------------------------------------------------------------
-*/
+export async function getStudyPlanData() {
+  const studentData = await getStudentData()
 
-export async function getStudyPlanData(courseId = '2') {
-  const studentData = await getStudentData(courseId)
+  if (!studentData.reports.length) {
+    return {
+      student: studentData.student,
+      recommendations: [],
+    }
+  }
+
+  const reportIds = studentData.reports.map(
+    (report) => report.id
+  )
 
   const { data: recommendations, error } = await supabase
     .from('ai_recommendations')
     .select(`
-      id,
+      learning_report_id,
       title,
       related_area,
       reason,
       action
     `)
-    .eq('learning_report_id', studentData.learning_report_id)
+    .in('learning_report_id', reportIds)
     .order('created_at', { ascending: true })
 
   if (error) throw new Error(error.message)
 
+  const reportMap = new Map(
+    studentData.reports.map((report) => [
+      report.id,
+      report.course_name,
+    ])
+  )
+
+  const recommendationsWithCourse = (
+    recommendations ?? []
+  ).map((item) => ({
+    ...item,
+    course_name:
+      reportMap.get(item.learning_report_id) ??
+      'Unknown Course',
+  }))
+
   return {
     student: studentData.student,
-    recommendations: recommendations ?? [],
+    recommendations: recommendationsWithCourse,
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Study Tips Data
-|--------------------------------------------------------------------------
-| Reads AI-generated study tips connected to the latest report.
-|--------------------------------------------------------------------------
-*/
+export async function getStudyTipsData() {
+  const studentData = await getStudentData()
 
-export async function getStudyTipsData(courseId = '2') {
-  const studentData = await getStudentData(courseId)
+  if (!studentData.reports.length) {
+    return {
+      student: studentData.student,
+      tips: [],
+    }
+  }
+
+  const reportIds = studentData.reports.map(
+    (report) => report.id
+  )
 
   const { data: tips, error } = await supabase
     .from('ai_recommendations')
     .select(`
-      id,
+      learning_report_id,
       title,
       related_area,
       recommendation
     `)
-    .eq('learning_report_id', studentData.learning_report_id)
+    .in('learning_report_id', reportIds)
     .order('created_at', { ascending: true })
 
   if (error) throw new Error(error.message)
 
+  const reportMap = new Map(
+    studentData.reports.map((report) => [
+      report.id,
+      report.course_name,
+    ])
+  )
+
+  const tipsWithCourse = (tips ?? []).map((tip) => ({
+    ...tip,
+    course_name:
+      reportMap.get(tip.learning_report_id) ??
+      'Unknown Course',
+  }))
+
   return {
     student: studentData.student,
-    tips: tips ?? [],
+    tips: tipsWithCourse,
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Adaptive Quiz Data
-|--------------------------------------------------------------------------
-| Reads generated quiz questions connected to the latest report.
-|--------------------------------------------------------------------------
-*/
+export async function getAdaptiveQuizData() {
+  const studentData = await getStudentData()
 
-export async function getAdaptiveQuizData(courseId = '2') {
-  const studentData = await getStudentData(courseId)
+  if (!studentData.reports.length) {
+    return {
+      student: studentData.student,
+      questions: [],
+    }
+  }
+
+  const reportIds = studentData.reports.map(
+    (report) => report.id
+  )
 
   const { data: questions, error } = await supabase
     .from('ai_quiz_questions')
@@ -257,14 +275,30 @@ export async function getAdaptiveQuizData(courseId = '2') {
       correct_answer,
       explanation
     `)
-    .eq('learning_report_id', studentData.learning_report_id)
+    .in('learning_report_id', reportIds)
     .order('weak_area', { ascending: true })
     .order('question_number', { ascending: true })
 
   if (error) throw new Error(error.message)
 
+  const reportMap = new Map(
+    studentData.reports.map((report) => [
+      report.id,
+      report.course_name,
+    ])
+  )
+
+  const questionsWithCourse = (questions ?? []).map(
+    (question) => ({
+      ...question,
+      course_name:
+        reportMap.get(question.learning_report_id) ??
+        'Unknown Course',
+    })
+  )
+
   return {
     student: studentData.student,
-    questions: questions ?? [],
+    questions: questionsWithCourse,
   }
 }
