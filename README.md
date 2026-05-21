@@ -25,7 +25,7 @@ The frontend currently provides:
 - Sidebar navigation
 - Shared page structure
 - Responsive interface design
-- Static frontend integration structure for backend connectivity
+- Dynamic frontend integration with the hosted SkillSync backend API
 - Supabase authentication integration
 - Application-level session timeout handling
 
@@ -45,33 +45,36 @@ The frontend currently provides:
 
 Displays:
 
-- Student dashboard interface
-- Learning analytics layout
-- Performance overview sections
+- Multi-course learning analytics dashboard
+- Current competency mastery overview
+- Learning trend visualisation
+- Strengths and improvement analysis
+- Overall mastery score aggregation
 
 ## Study Plan
 
 Displays:
 
-- Study planning interface
-- Revision structure layout
-- Learning organisation sections
+- AI-generated study recommendations
+- Multi-course revision planning
+- Learning focus organisation
 
 ## Study Tips
 
 Displays:
 
-- Study tips interface
-- Learning recommendation sections
-- Revision guidance layout
+- AI-generated personalised study tips
+- Course-specific learning guidance
+- SILO-based recommendation grouping
 
 ## Adaptive Quiz
 
 Displays:
 
-- Adaptive quiz interface
-- Quiz interaction layout
-- Revision question sections
+- Adaptive revision quizzes
+- Randomised question ordering
+- Course-specific competency targeting
+- Weak-area focused revision support
 
 ---
 
@@ -118,6 +121,7 @@ The timeout system is implemented globally through a shared `SessionTimeout` com
 - TypeScript
 - CSS
 - Supabase Authentication
+- Azure Static Web Apps
 
 ---
 
@@ -173,6 +177,9 @@ The frontend is responsible for:
 - Displaying AI-generated study support
 - Handling frontend routing and navigation
 - Managing inactivity-based session termination
+- Aggregating multi-course student analytics
+- Displaying competency progression trends
+- Rendering adaptive learning recommendations
 
 ---
 
@@ -207,6 +214,21 @@ The application will run on:
 ```text
 http://localhost:3000
 ```
+
+---
+
+# Deployment
+
+The SkillSync frontend is hosted using Azure Static Web Apps with GitHub Actions CI/CD integration.
+
+Frontend hosting platform:
+
+- Azure Static Web Apps
+
+Authentication and backend services:
+
+- Supabase Authentication
+- Hosted SkillSync backend API
 
 
 

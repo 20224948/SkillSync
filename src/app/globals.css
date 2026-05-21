@@ -982,3 +982,18 @@ select {
   opacity: 1;
   line-height: 1.25;
 }
+
+.current-score {
+  font-weight: 700;
+  color: #111827;
+}
+
+.trend-positive {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.trend-negative {
+  color: #dc2626;
+  font-weight: 600;
+}

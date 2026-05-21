@@ -231,9 +231,11 @@ export default function DashboardPage() {
                 </div>
 
                 <span className="learning-overview-score">
-                  {silo.previous_mastery_score !== null &&
-                  silo.previous_mastery_score !==
-                    undefined ? (
+                  <span className="current-score">
+                    {Number(silo.mastery_score).toFixed(0)}%
+                  </span>
+
+                  {silo.mastery_change !== null && (
                     <span
                       className={
                         Number(silo.mastery_change) >= 0
@@ -241,29 +243,11 @@ export default function DashboardPage() {
                           : 'trend-negative'
                       }
                     >
-                      {Number(
-                        silo.previous_mastery_score
-                      ).toFixed(0)}
-                      % →{' '}
-                      {Number(
-                        silo.mastery_score
-                      ).toFixed(0)}
-                      % (
-                      {Number(silo.mastery_change) >=
-                      0
-                        ? '+'
-                        : ''}
-                      {Number(
-                        silo.mastery_change
-                      ).toFixed(0)}
+                      {' '}
+                      (
+                      {Number(silo.mastery_change) >= 0 ? '+' : ''}
+                      {Number(silo.mastery_change).toFixed(0)}
                       %)
-                    </span>
-                  ) : (
-                    <span>
-                      {Number(
-                        silo.mastery_score
-                      ).toFixed(0)}
-                      %
                     </span>
                   )}
                 </span>
